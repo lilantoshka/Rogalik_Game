@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рогалик: Подземелья Судьбы</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e6e6e6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(255, 200, 124, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(100, 200, 255, 0.05) 0%, transparent 20%);
+            z-index: -1;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 2px solid #4ecca3;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+        }
+        
+        .game-title {
+            font-size: 3.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: linear-gradient(to right, #f8f8f8, #4ecca3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(78, 204, 163, 0.3);
+            margin-bottom: 10px;
+        }
+        
+        .game-subtitle {
+            font-size: 1.2rem;
+            color: #a8a8a8;
+            margin-bottom: 15px;
+        }
+        
+        .game-container {
+            display: flex;
+            max-width: 1400px;
+            width: 95%;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .game-board {
+            flex: 1;
+            background: rgba(20, 25, 45, 0.7);
+            border-radius: 15px;
+            border: 2px solid #4ecca3;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            min-height: 600px;
+        }
+        
+        .field {
+            position: relative;
+            width: 1000px;
+            height: 600px;
+            margin: 0 auto;
+        }
+        
+        .tile {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background-size: 100%;
+            z-index: 5;
+            transition: transform 0.2s;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .tile:hover {
+            transform: scale(1.1);
+            z-index: 20;
+        }
+        
+        .tile.wall {
+            background-image: url('tile-W.png');
+        }
+        
+        .tile.floor {
+            background-image: url('tile-.png');
+        }
+        
+        .tile.player {
+            background-image: url('tile-P.png');
+            z-index: 15;
+            animation: pulse 2s infinite;
+        }
+        
+        .tile.enemy {
+            background-image: url('tile-E.png');
+            z-index: 10;
+            animation: float 3s infinite ease-in-out;
+        }
+        
+        .tile.potion {
+            background-image: url('tile-HP.png');
+            z-index: 9;
+            animation: glow 2s infinite alternate;
+        }
+        
+        .tile.sword {
+            background-image: url('tile-SW.png');
+            z-index: 9;
+            animation: spin 4s infinite linear;
+        }
+        
+        .tile .health {
+            background-color: #ff0000;
+            z-index: 11;
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 3px;
+            transition: width 0.3s;
+        }
+        
+        .tile.player .health {
+            background-color: #00ff00;
+        }
+        
+        .game-info {
+            width: 300px;
+            background: rgba(20, 25, 45, 0.7);
+            border-radius: 15px;
+            border: 2px solid #4ecca3;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .info-section {
+            background: rgba(30, 35, 55, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(100, 100, 150, 0.3);
+        }
+        
+        .info-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #4ecca3;
+            text-align: center;
+            border-bottom: 1px solid rgba(78, 204, 163, 0.3);
+            padding-bottom: 8px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-name {
+            color: #a8a8a8;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #4ecca3;
+        }
+        
+        .health-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff9e7d);
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .inventory {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .inventory-item {
+            height: 60px;
+            background: rgba(40, 45, 70, 0.6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .inventory-item:hover {
+            transform: translateY(-5px);
+            border-color: #4ecca3;
+            box-shadow: 0 5px 15px rgba(78, 204, 163, 0.3);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 12px;
+            background: rgba(40, 45, 70, 0.6);
+            border: 1px solid #4ecca3;
+            color: #e6e6e6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(78, 204, 163, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(78, 204, 163, 0.3);
+        }
+        
+        .control-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .control-btn span {
+            font-size: 0.8rem;
+            color: #a8a8a8;
+        }
+        
+        #btnAttack {
+            grid-column: span 3;
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+        }
+        
+        #btnAttack:hover {
+            background: rgba(255, 107, 107, 0.3);
+        }
+        
+        #btnRestart {
+            grid-column: span 3;
+            background: rgba(78, 204, 163, 0.2);
+        }
+        
+        .message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            border: 1px solid #4ecca3;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-align: center;
+            max-width: 80%;
+        }
+        
+        .story {
+            width: 95%;
+            max-width: 1000px;
+            background: rgba(20, 25, 45, 0.7);
+            border-radius: 15px;
+            border: 2px solid #4ecca3;
+            padding: 25px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            line-height: 1.7;
+        }
+        
+        .story-title {
+            text-align: center;
+            font-size: 1.8rem;
+            color: #4ecca3;
+            margin-bottom: 20px;
+        }
+        
+        .story-text {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .story-highlight {
+            color: #ffd166;
+            font-weight: bold;
+        }
+        
+        .footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-top: 1px solid rgba(78, 204, 163, 0.3);
+            font-size: 0.9rem;
+            color: #a8a8a8;
+        }
+        
+        .attack-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+        }
+        
+        .level-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        
+        @keyframes glow {
+            0% { filter: drop-shadow(0 0 3px rgba(255, 209, 102, 0.5)); }
+            100% { filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.8)); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes attackBlink {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.8); }
+            100% { filter: brightness(1); }
+        }
+        
+        @keyframes hitBlink {
+            0% { background-color: rgba(255, 0, 0, 0.3); }
+            100% { background-color: transparent; }
+        }
+        
+        @keyframes flash {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translate(0, 0); }
+            10% { transform: translate(-5px, 5px); }
+            20% { transform: translate(5px, -5px); }
+            30% { transform: translate(-5px, -5px); }
+            40% { transform: translate(5px, 5px); }
+            50% { transform: translate(-5px, 5px); }
+            60% { transform: translate(5px, -5px); }
+            70% { transform: translate(-5px, -5px); }
+            80% { transform: translate(5px, 5px); }
+            90% { transform: translate(-5px, 5px); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        @keyframes levelUp {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        
+        @media (max-width: 1100px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .game-info {
+                width: 100%;
+            }
+            
+            .field {
+                width: 100%;
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="game-title">Рогалик: Подземелья Судьбы</h1>
+        <p class="game-subtitle">Пошаговая приключенческая игра в подземельях</p>
+    </div>
+    
+    <div class="game-container">
+        <div class="game-board">
+            <div class="attack-effect" id="attackEffect"></div>
+            <div class="level-transition" id="levelTransition"></div>
+            <div class="field"></div>
+        </div>
+        
+        <div class="game-info">
+            <div class="info-section">
+                <h2 class="info-title">Статус Героя</h2>
+                <div class="stat">
+                    <span class="stat-name">Здоровье:</span>
+                    <span class="stat-value" id="health">100</span>
+                </div>
+                <div class="health-bar">
+                    <div class="health-fill" id="health-bar" style="width: 100%"></div>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-name">Атака:</span>
+                    <span class="stat-value" id="attack">10</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-name">Жизни:</span>
+                    <span class="stat-value" id="lives">3</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-name">Шаги:</span>
+                    <span class="stat-value" id="steps">0</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-name">Уровень:</span>
+                    <span class="stat-value" id="level">1</span>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h2 class="info-title">Инвентарь</h2>
+                <div class="inventory">
+                    <div class="inventory-item">🥾</div>
+                    <div class="inventory-item">🔑</div>
+                    <div class="inventory-item">💎</div>
+                    <div class="inventory-item">🧪</div>
+                    <div class="inventory-item">🗡️</div>
+                    <div class="inventory-item">🛡️</div>
+                    <div class="inventory-item">🧭</div>
+                    <div class="inventory-item">📜</div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h2 class="info-title">Управление</h2>
+                <div class="controls">
+                    <button class="control-btn" id="btnUp">↑<span>Вверх (W)</span></button>
+                    <button class="control-btn" id="btnLeft">←<span>Влево (A)</span></button>
+                    <button class="control-btn" id="btnDown">↓<span>Вниз (S)</span></button>
+                    <button class="control-btn" id="btnRight">→<span>Вправо (D)</span></button>
+                    <button class="control-btn" id="btnAttack">⚔️ Атака<span>Пробел</span></button>
+                    <button class="control-btn" id="btnRestart">🔄 Новая игра</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="story">
+        <h2 class="story-title">Легенда Подземелий</h2>
+        <p class="story-text">В давние времена, когда магия еще пронизывала мир, могущественный артефакт - <span class="story-highlight">Камень Вечности</span> - был спрятан в самых глубинах подземных лабиринтов. Многие пытались найти его, но никому не удалось вернуться живым.</p>
+        <p class="story-text">Теперь судьба избрала тебя, отважный герой, чтобы бросить вызов тьме, населяющей эти катакомбы. Твоя задача - пройти через все уровни подземелий, победить монстров, собрать артефакты и найти легендарный Камень Вечности.</p>
+        <p class="story-text">Будь осторожен - каждое подземелье наполнено ловушками, врагами и тайнами. Твои навыки и отвага будут подвергнуты испытанию. Удачи, герой!</p>
+    </div>
+    
+    <div class="message" id="message"></div>
+    
+    <div class="footer">
+        <p>Рогалик: Подземелья Судьбы | Создано с использованием JavaScript и jQuery</p>
+    </div>
+
+    <script>
+        class Game {
+            constructor() {
+                this.mapWidth = 40;
+                this.mapHeight = 24;
+                this.tileSize = 25;
+                this.map = [];
+                this.player = { 
+                    x: 0, 
+                    y: 0, 
+                    health: 100, 
+                    maxHealth: 100, 
+                    attack: 10,
+                    lives: 3
+                };
+                this.enemies = [];
+                this.items = { potions: [], swords: [] };
+                this.steps = 0;
+                this.level = 1;
+                this.gameOver = false;
+                this.$field = $('.field');
+            }
+
+            init() {
+                this.generateMap();
+                this.render();
+                this.bindEvents();
+                this.updateInfo();
+                this.showMessage('Добро пожаловать в подземелья! Удачи, герой!');
+            }
+
+            generateMap() {
+                for (let y = 0; y < this.mapHeight; y++) {
+                    this.map[y] = [];
+                    for (let x = 0; x < this.mapWidth; x++) {
+                        this.map[y][x] = 'wall';
+                    }
+                }
+
+                const hPassages = Math.floor(Math.random() * 3) + 3;
+                for (let i = 0; i < hPassages; i++) {
+                    const y = Math.floor(Math.random() * this.mapHeight);
+                    for (let x = 0; x < this.mapWidth; x++) {
+                        this.map[y][x] = 'floor';
+                    }
+                }
+
+                const vPassages = Math.floor(Math.random() * 3) + 3;
+                for (let i = 0; i < vPassages; i++) {
+                    const x = Math.floor(Math.random() * this.mapWidth);
+                    for (let y = 0; y < this.mapHeight; y++) {
+                        this.map[y][x] = 'floor';
+                    }
+                }
+
+                const rooms = Math.floor(Math.random() * 6) + 5;
+                for (let i = 0; i < rooms; i++) {
+                    const width = Math.floor(Math.random() * 6) + 3;
+                    const height = Math.floor(Math.random() * 6) + 3;
+                    const x = Math.floor(Math.random() * (this.mapWidth - width - 1)) + 1;
+                    const y = Math.floor(Math.random() * (this.mapHeight - height - 1)) + 1;
+
+                    for (let ry = y; ry < y + height; ry++) {
+                        for (let rx = x; rx < x + width; rx++) {
+                            this.map[ry][rx] = 'floor';
+                        }
+                    }
+                }
+
+                const emptyTiles = [];
+                for (let y = 0; y < this.mapHeight; y++) {
+                    for (let x = 0; x < this.mapWidth; x++) {
+                        if (this.map[y][x] === 'floor') {
+                            emptyTiles.push({x, y});
+                        }
+                    }
+                }
+
+                for (let i = emptyTiles.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [emptyTiles[i], emptyTiles[j]] = [emptyTiles[j], emptyTiles[i]];
+                }
+
+                for (let i = 0; i < 10 && emptyTiles.length > 0; i++) {
+                    const tile = emptyTiles.pop();
+                    this.map[tile.y][tile.x] = 'potion';
+                    this.items.potions.push({x: tile.x, y: tile.y});
+                }
+
+                for (let i = 0; i < 2 && emptyTiles.length > 0; i++) {
+                    const tile = emptyTiles.pop();
+                    this.map[tile.y][tile.x] = 'sword';
+                    this.items.swords.push({x: tile.x, y: tile.y});
+                }
+
+                if (emptyTiles.length > 0) {
+                    const tile = emptyTiles.pop();
+                    this.player.x = tile.x;
+                    this.player.y = tile.y;
+                }
+
+                const enemyCount = 10 + (this.level - 1) * 2;
+                for (let i = 0; i < enemyCount && emptyTiles.length > 0; i++) {
+                    const tile = emptyTiles.pop();
+                    this.enemies.push({
+                        x: tile.x,
+                        y: tile.y,
+                        health: 80 + (this.level - 1) * 10,
+                        maxHealth: 80 + (this.level - 1) * 10,
+                        attack: 5 + (this.level - 1),
+                        id: i
+                    });
+                }
+            }
+
+            render() {
+                this.$field.empty();
+                this.$field.css({
+                    width: this.mapWidth * this.tileSize,
+                    height: this.mapHeight * this.tileSize
+                });
+
+                for (let y = 0; y < this.mapHeight; y++) {
+                    for (let x = 0; x < this.mapWidth; x++) {
+                        const tileType = this.map[y][x];
+                        const $tile = $('<div>').addClass('tile').css({
+                            left: x * this.tileSize,
+                            top: y * this.tileSize
+                        });
+                        
+                        if (tileType === 'wall') {
+                            $tile.addClass('wall');
+                        } else if (tileType === 'potion') {
+                            $tile.addClass('potion');
+                        } else if (tileType === 'sword') {
+                            $tile.addClass('sword');
+                        } else {
+                            $tile.addClass('floor');
+                        }
+                        
+                        this.$field.append($tile);
+                    }
+                }
+
+                this.enemies.forEach(enemy => {
+                    if (enemy.health > 0) {
+                        const $enemy = $('<div>').addClass('tile enemy').css({
+                            left: enemy.x * this.tileSize,
+                            top: enemy.y * this.tileSize
+                        });
+                        
+                        const healthPercent = (enemy.health / enemy.maxHealth) * 100;
+                        $enemy.append($('<div>').addClass('health').css('width', healthPercent + '%'));
+                        this.$field.append($enemy);
+                    }
+                });
+
+                const $player = $('<div>').addClass('tile player').css({
+                    left: this.player.x * this.tileSize,
+                    top: this.player.y * this.tileSize
+                });
+                
+                const healthPercent = (this.player.health / this.player.maxHealth) * 100;
+                $player.append($('<div>').addClass('health').css('width', healthPercent + '%'));
+                this.$field.append($player);
+            }
+
+            bindEvents() {
+                $(document).on('keydown', e => {
+                    if (this.gameOver) return;
+                    
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        this.attack();
+                        return;
+                    }
+                    
+                    const key = e.key.toLowerCase();
+                    
+                    if (key === 'w') this.movePlayer(0, -1);
+                    else if (key === 's') this.movePlayer(0, 1);
+                    else if (key === 'a') this.movePlayer(-1, 0);
+                    else if (key === 'd') this.movePlayer(1, 0);
+                });
+
+                $('#btnUp').click(() => this.movePlayer(0, -1));
+                $('#btnDown').click(() => this.movePlayer(0, 1));
+                $('#btnLeft').click(() => this.movePlayer(-1, 0));
+                $('#btnRight').click(() => this.movePlayer(1, 0));
+                $('#btnAttack').click(() => this.attack());
+                $('#btnRestart').click(() => this.restart());
+            }
+
+            movePlayer(dx, dy) {
+                if (this.gameOver) return;
+                
+                const newX = this.player.x + dx;
+                const newY = this.player.y + dy;
+                
+                if (newX < 0 || newX >= this.mapWidth || newY < 0 || newY >= this.mapHeight) 
+                    return;
+                
+                if (this.map[newY][newX] === 'wall') 
+                    return;
+                
+                const enemyHere = this.enemies.find(e => e.x === newX && e.y === newY && e.health > 0);
+                if (enemyHere) 
+                    return;
+                
+                this.player.x = newX;
+                this.player.y = newY;
+                this.steps++;
+                
+                if (this.map[newY][newX] === 'potion') {
+                    this.player.health = Math.min(this.player.health + 25, this.player.maxHealth);
+                    this.map[newY][newX] = 'floor';
+                    this.showMessage('Зелье здоровья! +25 HP');
+                    $('.tile').eq(newY * this.mapWidth + newX).removeClass('potion').addClass('floor');
+                    
+                    const $effect = $('#attackEffect');
+                    $effect.css({
+                        background: 'radial-gradient(circle, rgba(0,255,0,0.3) 0%, transparent 70%)'
+                    }).show().css('opacity', 0.8)
+                      .animate({opacity: 0}, 500, () => $effect.hide());
+                } 
+                else if (this.map[newY][newX] === 'sword') {
+                    this.player.attack += 5;
+                    this.map[newY][newX] = 'floor';
+                    this.showMessage('Меч! +5 к атаке');
+                    $('.tile').eq(newY * this.mapWidth + newX).removeClass('sword').addClass('floor');
+                    
+                    const $effect = $('#attackEffect');
+                    $effect.css({
+                        background: 'radial-gradient(circle, rgba(0,150,255,0.3) 0%, transparent 70%)'
+                    }).show().css('opacity', 0.8)
+                      .animate({opacity: 0}, 500, () => $effect.hide());
+                }
+                
+                this.moveEnemies();
+                
+                this.updateInfo();
+                this.render();
+            }
+
+            attack() {
+                if (this.gameOver) return;
+                
+                let attacked = false;
+                const directions = [
+                    {dx: -1, dy: 0}, {dx: 1, dy: 0},
+                    {dx: 0, dy: -1}, {dx: 0, dy: 1}
+                ];
+                
+                $('.player').addClass('attack-animation');
+                setTimeout(() => $('.player').removeClass('attack-animation'), 300);
+                
+                const $effect = $('#attackEffect');
+                $effect.css({
+                    background: 'radial-gradient(circle, rgba(255,215,0,0.5) 0%, transparent 70%)'
+                }).show().css('opacity', 0.8)
+                  .animate({opacity: 0}, 500, () => $effect.hide());
+                
+                directions.forEach(dir => {
+                    const x = this.player.x + dir.dx;
+                    const y = this.player.y + dir.dy;
+                    
+                    if (x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight) {
+                        const enemyIndex = this.enemies.findIndex(e => 
+                            e.x === x && e.y === y && e.health > 0);
+                            
+                        if (enemyIndex !== -1) {
+                            this.enemies[enemyIndex].health -= this.player.attack;
+                            attacked = true;
+                            
+                            $(`.enemy`).each(function() {
+                                const $enemy = $(this);
+                                if (parseInt($enemy.css('left')) === x * 25 && 
+                                    parseInt($enemy.css('top')) === y * 25) {
+                                    $enemy.addClass('hit-animation');
+                                    setTimeout(() => $enemy.removeClass('hit-animation'), 300);
+                                }
+                            });
+                            
+                            if (this.enemies[enemyIndex].health <= 0) {
+                                this.showMessage('Враг повержен!');
+                            }
+                        }
+                    }
+                });
+                
+                if (attacked) {
+                    this.render();
+                    this.checkGameState();
+                }
+            }
+
+            moveEnemies() {
+                this.enemies.forEach(enemy => {
+                    if (enemy.health <= 0) return;
+                    
+                    const distX = Math.abs(enemy.x - this.player.x);
+                    const distY = Math.abs(enemy.y - this.player.y);
+                    
+                    if ((distX === 1 && distY === 0) || (distY === 1 && distX === 0)) {
+                        this.player.health -= enemy.attack;
+                        this.showMessage(`Враг атаковал! -${enemy.attack} HP`);
+                        
+                        $('.player').addClass('hit-animation');
+                        setTimeout(() => $('.player').removeClass('hit-animation'), 300);
+                        
+                        $('.game-board').css('animation', 'shake 0.5s');
+                        setTimeout(() => $('.game-board').css('animation', ''), 500);
+                        return;
+                    }
+                    
+                    const directions = [
+                        {dx: -1, dy: 0}, {dx: 1, dy: 0},
+                        {dx: 0, dy: -1}, {dx: 0, dy: 1}
+                    ];
+                    
+                    const validMoves = [];
+                    directions.forEach(dir => {
+                        const newX = enemy.x + dir.dx;
+                        const newY = enemy.y + dir.dy;
+                        
+                        if (newX >= 0 && newX < this.mapWidth && 
+                            newY >= 0 && newY < this.mapHeight &&
+                            this.map[newY][newX] !== 'wall' &&
+                            !this.enemies.some(e => e.x === newX && e.y === newY && e.health > 0) &&
+                            !(newX === this.player.x && newY === this.player.y)) {
+                            validMoves.push({x: newX, y: newY});
+                        }
+                    });
+                    
+                    if (validMoves.length > 0) {
+                        const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        enemy.x = move.x;
+                        enemy.y = move.y;
+                    }
+                });
+                
+                this.checkGameState();
+            }
+
+            checkGameState() {
+                if (this.player.health <= 0) {
+                    this.player.lives--;
+                    if (this.player.lives <= 0) {
+                        this.gameOver = true;
+                        this.showMessage('Игра окончена! Вы проиграли.');
+                    } else {
+                        this.player.health = this.player.maxHealth;
+                        this.showMessage(`Потеряна жизнь! Осталось: ${this.player.lives}`);
+                    }
+                } else if (this.enemies.every(e => e.health <= 0)) {
+                    const $transition = $('#levelTransition');
+                    $transition.css({
+                        background: 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%)'
+                    }).show().css('opacity', 0)
+                      .animate({opacity: 1}, 1000, () => {
+                          this.level++;
+                          this.generateMap();
+                          this.render();
+                          $transition.animate({opacity: 0}, 1000, () => $transition.hide());
+                      });
+                }
+                
+                this.updateInfo();
+            }
+
+            updateInfo() {
+                $('#health').text(this.player.health);
+                $('#attack').text(this.player.attack);
+                $('#lives').text(this.player.lives);
+                $('#steps').text(this.steps);
+                $('#level').text(this.level);
+                $('#health-bar').css('width', (this.player.health / this.player.maxHealth) * 100 + '%');
+            }
+
+            showMessage(text) {
+                const $msg = $('#message');
+                $msg.text(text).css('opacity', 1);
+                setTimeout(() => $msg.css('opacity', 0), 3000);
+            }
+
+            restart() {
+                this.player = { 
+                    x: 0, 
+                    y: 0, 
+                    health: 100, 
+                    maxHealth: 100, 
+                    attack: 10,
+                    lives: 3
+                };
+                this.enemies = [];
+                this.items = { potions: [], swords: [] };
+                this.steps = 0;
+                this.level = 1;
+                this.gameOver = false;
+                this.generateMap();
+                this.render();
+                this.updateInfo();
+                this.showMessage('Новая игра началась! Удачи!');
+            }
+        }
+
+        $(document).ready(() => {
+            const game = new Game();
+            game.init();
+        });
+    </script>
+</body>
+</html>
